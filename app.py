@@ -11,6 +11,9 @@ from geopy.geocoders import Nominatim
 import axios
 import datetime
 
+import json
+import Database
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
 
@@ -39,7 +42,7 @@ def image_gps(image):
             lat_lng_str  = "%f, %f" % (latitude,longitude)
             geolocoder = Nominatim(user_agent = 'South Korea', timeout=None)
             address = geolocoder.reverse(lat_lng_str)
-            return address
+            return str(address)
         else :
             return ''
     except AttributeError:
@@ -65,9 +68,6 @@ def image_classification(filename):
     #예측 . 일치율% 형태로 출력
     prediction = str(class_name[np.argmax(pred[0])])
     probility = '{0:0.2f}'.format(100*max(pred[0]))
-
-    # 검증한 이미지 삭제
-    os.remove(filename)
 
     return (prediction, probility)
 
@@ -99,8 +99,59 @@ async def upload_cloudnary_img(image):
         return response.data.url
 
 # mysql 쿼리에 이미지 정보 저장
+def save_db(image_data):
+    db_class = Database()
+    in_sql = "INSERT INTO capstonedb.ImageInfo(uid,image_id,image_date,image_location) \
+                VALUES('%s','%d')" % ('testData',1,image_data['datetime'],image_data['address'])
+    
+    db_class.execute(in_sql)
+    db_class.commit()
+
+    select_sql = "SELECT FROM capstonedb.ImageInfo"
 
 # 파일 업로드 후 카테고리 json로 리턴
+@app.route('/image_upload2',methods=['POST'])
+def image_upload2():
+    file_list = request.files.getlist("file_list")
+    image_list = []
+    result_list = []
+    
+    for file in file_list:
+        filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
+        file.save(filename)
+        image_list.append(filename)
+
+    #클라우디너리 서버에 이미지 업로드
+    for file in image_list :
+        #메타데이터 load
+        with open(file,"rb") as f:
+            image_byte = f.read()
+        image = Image(image_byte)
+
+         # 메타데이터 추출
+        if image.has_exif:
+            image_meta["datetime"] = image.datetime # 촬영일자
+            image_meta["address"] = image_gps(image) # 이미지 주소
+        
+        # 이미지 카테고리 분류
+        image_meta["prediction"], image_meta["probility"] = image_classification(file)
+
+        # db 저장
+        result_list.append({'image':file.replace('img/',''),
+                        'prediction' :image_meta["prediction"],
+                        'probility':image_meta["probility"],
+                        'datetime': image_meta["datetime"],
+                        'address' : image_meta["address"],
+                        'image_width' : '',
+                        'image_height' : ''})
+        
+        # 분석 끝난 이미지 삭제
+        os.remove(file)
+
+    result = {'code' : '201', 'message': '', 'result' : result_list}
+    # result = {'image' : file.filename, 'prediction': prediction, 'probility': probility}
+    return json.dumps(result)
+
 @app.route('/image_upload',methods=['POST'])
 def image_upload():
     file = request.files['file_list']
@@ -115,6 +166,7 @@ def image_upload():
     with open(filename,"rb") as f:
         image_byte = f.read()
     image = Image(image_byte)
+
 
     # 메타데이터 추출
     if image.has_exif:
