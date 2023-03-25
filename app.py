@@ -9,8 +9,10 @@ import numpy as np
 from exif import Image
 from geopy.geocoders import Nominatim
 
+from DB import Database
+
 import json
-import Database
+import DB
 
 # Set your Cloudinary credentials
 # ==============================
@@ -90,13 +92,14 @@ def upload_cloudnary_img(image):
     return response
 
 # mysql 쿼리에 이미지 정보 저장
-def save_db(image_data):
-    db_class = Database()
-    in_sql = "INSERT INTO capstonedb.ImageInfo(uid,image_id,image_date,image_location) \
-                VALUES('%s','%d')" % ('testData',1,image_data['datetime'],image_data['address'])
+def save_db(result):
+    sql = "INSERT INTO \
+            capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
+            VALUES('%s','%s','%s','%s','%d','%d')\
+            " % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['address'],result['width'],result['height'])
     
-    db_class.execute(in_sql)
-    db_class.commit()
+    Database().execute(sql)
+    Database().commit()
 
 # 메타데이터 추출
 def get_meta_info(file):
@@ -141,6 +144,8 @@ def image_upload():
         r['width'] = img_upload["width"]
         r['height'] = img_upload["height"]
         r['remote'] = img_upload["secure_url"]
+
+        # 배경화면 추천 기준 -> 
         
         # 메타데이터 추출
         image_meta = get_meta_info(image_list[i])
@@ -153,6 +158,7 @@ def image_upload():
     for i in range(len(image_list)):
         # db 저장
         print(result[i])
+        save_db(result[i])
         # result_list.append({'image':file.replace('img/',''),
         #                 'remote' : img_upload["secure_url"],
         #                 'prediction' :image_meta["prediction"],
