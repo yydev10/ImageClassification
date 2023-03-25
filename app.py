@@ -8,14 +8,25 @@ import numpy as np
 
 from exif import Image
 from geopy.geocoders import Nominatim
-import axios
-import datetime
 
 import json
 import Database
 
+# Set your Cloudinary credentials
+# ==============================
+from dotenv import load_dotenv
+load_dotenv()
+
+# Import the Cloudinary libraries
+# ==============================
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+# config
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
+config = cloudinary.config(secure=True)
 
 # TODO : 카테고리 파일 db 연결하기
 file = open('category.text','r') 
@@ -72,31 +83,11 @@ def image_classification(filename):
     return (prediction, probility)
 
 # 클라우디너리 서버에 이미지 업로드
-async def upload_cloudnary_img(image):
+def upload_cloudnary_img(image):
     print("클라우디너리 서버에 이미지 업로드")
-    url = 'https://api.cloudinary.com/v1_1/[cloud name]/image/upload'
-    api_key = ''
-    upload_preset = ''
-
-    form_data = {
-        'api_key': api_key,
-        'upload_preset': '[remembered preset name]',
-        'timestamp': int(datetime.now().timestamp()),
-        'file': image
-    }
-
-    headers = {
-        'Content-Type': 'multipart/form-data'
-    }
-
-    response = await axios.post(url, data=form_data, headers=headers)
-
-    if not response:
-        response = await axios.post(url, data=form_data, headers=headers) # 한번 더 재요청
-        if not response:
-            return 'error image upload'
-    else :
-        return response.data.url
+    response = cloudinary.uploader.upload(image)
+    print(jsonify(response))
+    return response
 
 # mysql 쿼리에 이미지 정보 저장
 def save_db(image_data):
@@ -107,11 +98,10 @@ def save_db(image_data):
     db_class.execute(in_sql)
     db_class.commit()
 
-    select_sql = "SELECT FROM capstonedb.ImageInfo"
-
 # 파일 업로드 후 카테고리 json로 리턴
-@app.route('/image_upload2',methods=['POST'])
+@app.route('/image_upload',methods=['POST'])
 def image_upload2():
+    # 파일 업로드 후 
     file_list = request.files.getlist("file_list")
     image_list = []
     result_list = []
@@ -123,6 +113,7 @@ def image_upload2():
 
     #클라우디너리 서버에 이미지 업로드
     for file in image_list :
+        img_upload = upload_cloudnary_img(file)
         #메타데이터 load
         with open(file,"rb") as f:
             image_byte = f.read()
@@ -130,57 +121,34 @@ def image_upload2():
 
          # 메타데이터 추출
         if image.has_exif:
-            image_meta["datetime"] = image.datetime # 촬영일자
-            image_meta["address"] = image_gps(image) # 이미지 주소
-        
+            meta_list = image.list_all()
+            if('datetime' in meta_list):
+                image_meta["datetime"] = image.datatime # 촬영일자
+            else :
+                image_meta["datetime"] = ""
+            if('gps_latitude' in meta_list):
+                image_meta["address"] = image_gps(image) # 이미지 주소
+            else :
+                image_meta["address"] = ""
+            
         # 이미지 카테고리 분류
         image_meta["prediction"], image_meta["probility"] = image_classification(file)
 
         # db 저장
         result_list.append({'image':file.replace('img/',''),
+                        'remote' : img_upload["secure_url"],
                         'prediction' :image_meta["prediction"],
                         'probility':image_meta["probility"],
                         'datetime': image_meta["datetime"],
                         'address' : image_meta["address"],
-                        'image_width' : '',
-                        'image_height' : ''})
+                        'image_width' : img_upload["width"],
+                        'image_height' : img_upload["height"]})
         
         # 분석 끝난 이미지 삭제
         os.remove(file)
 
     result = {'code' : '201', 'message': '', 'result' : result_list}
-    # result = {'image' : file.filename, 'prediction': prediction, 'probility': probility}
     return json.dumps(result)
-
-@app.route('/image_upload',methods=['POST'])
-def image_upload():
-    file = request.files['file_list']
-    
-    filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
-    file.save(filename)
-
-    #클라우디너리 서버에 이미지 업로드
-    upload_cloudnary_img(file)
-
-    #메타데이터 load
-    with open(filename,"rb") as f:
-        image_byte = f.read()
-    image = Image(image_byte)
-
-
-    # 메타데이터 추출
-    if image.has_exif:
-        image_meta["datetime"] = image.datetime # 촬영일자
-        image_meta["address"] = image_gps(image) # 이미지 주소
-
-    # 이미지 카테고리 분류
-    prediction, probility = image_classification(filename)
-    
-    for k in image_meta:
-        print(image_meta[k])
-
-    result = {'image' : file.filename, 'prediction': prediction, 'probility': probility}
-    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
