@@ -60,27 +60,28 @@ def image_gps(image):
         return 'error'
 
 # 이미지 전처리 함수
-def image_classification(filename):
+def image_classification(image_list,r):
     image = []
-    img = cv2.imread(filename,cv2.IMREAD_COLOR)
-    h,w,_ = img.shape # 이미지 넓이 구하기
-    image_meta["height"] = h
-    image_meta["width"] = w
 
-    img = cv2.resize(img, dsize=(224,224))
-    img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-    img = img / 255.0
-    image.append(img)
+    for i in range(len(image_list)):
+        img = cv2.imread(image_list[i],cv2.IMREAD_COLOR)
+        img = cv2.resize(img, dsize=(224,224))
+        img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        img = img / 255.0
+        image.append(img)
 
     #모델 load
     model = load_model('cats_and_dogs_filtered_Xception_Colab.h5')
     pred = model.predict(np.array(image))
 
     #예측 . 일치율% 형태로 출력
-    prediction = str(class_name[np.argmax(pred[0])])
-    probility = '{0:0.2f}'.format(100*max(pred[0]))
+    for i in range(len(pred)):
+        prediction = str(class_name[np.argmax(pred[i])])
+        probility = '{0:0.2f}'.format(100*max(pred[i]))
+        r['prediction'] = prediction
+        r["probility"] = probility
 
-    return (prediction, probility)
+    return r
 
 # 클라우디너리 서버에 이미지 업로드
 def upload_cloudnary_img(image):
@@ -98,57 +99,75 @@ def save_db(image_data):
     db_class.execute(in_sql)
     db_class.commit()
 
+# 메타데이터 추출
+def get_meta_info(file):
+    #메타데이터 load
+    with open(file,"rb") as f:
+        image_byte = f.read()
+    image = Image(image_byte)
+
+    if image.has_exif:
+        meta_list = image.list_all()
+        if('datetime' in meta_list):
+            image_meta["datetime"] = image.datetime # 촬영일자
+        else :
+            image_meta["datetime"] = ""
+        if('gps_latitude' in meta_list):
+            image_meta["address"] = image_gps(image) # 이미지 주소
+        else :
+            image_meta["address"] = ""
+        print(image_meta)
+    return image_meta
+
 # 파일 업로드 후 카테고리 json로 리턴
 @app.route('/image_upload',methods=['POST'])
-def image_upload2():
+def image_upload():
     # 파일 업로드 후 
     file_list = request.files.getlist("file_list")
     image_list = []
-    result_list = []
+    result = []
     
     for file in file_list:
         filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
         file.save(filename)
         image_list.append(filename)
 
-    #클라우디너리 서버에 이미지 업로드
-    for file in image_list :
-        img_upload = upload_cloudnary_img(file)
-        #메타데이터 load
-        with open(file,"rb") as f:
-            image_byte = f.read()
-        image = Image(image_byte)
+    for i in range(len(image_list)) :
+        # 이미지 이름 저장
+        result.append({'image_name': image_list[i]})
 
-         # 메타데이터 추출
-        if image.has_exif:
-            meta_list = image.list_all()
-            if('datetime' in meta_list):
-                image_meta["datetime"] = image.datatime # 촬영일자
-            else :
-                image_meta["datetime"] = ""
-            if('gps_latitude' in meta_list):
-                image_meta["address"] = image_gps(image) # 이미지 주소
-            else :
-                image_meta["address"] = ""
-            
-        # 이미지 카테고리 분류
-        image_meta["prediction"], image_meta["probility"] = image_classification(file)
+        #클라우디너리 서버에 이미지 업로드
+        img_upload = upload_cloudnary_img(image_list[i])
+        r = result[i]
+        r['width'] = img_upload["width"]
+        r['height'] = img_upload["height"]
+        r['remote'] = img_upload["secure_url"]
+        
+        # 메타데이터 추출
+        image_meta = get_meta_info(image_list[i])
+        r[i] = image_meta["datetime"]
+        r[i] = image_meta["address"]
 
+    # 이미지 카테고리 분류
+    r = image_classification(image_list, r)
+
+    for i in range(len(image_list)):
         # db 저장
-        result_list.append({'image':file.replace('img/',''),
-                        'remote' : img_upload["secure_url"],
-                        'prediction' :image_meta["prediction"],
-                        'probility':image_meta["probility"],
-                        'datetime': image_meta["datetime"],
-                        'address' : image_meta["address"],
-                        'image_width' : img_upload["width"],
-                        'image_height' : img_upload["height"]})
+        print(result[i])
+        # result_list.append({'image':file.replace('img/',''),
+        #                 'remote' : img_upload["secure_url"],
+        #                 'prediction' :image_meta["prediction"],
+        #                 'probility':image_meta["probility"],
+        #                 'datetime': image_meta["datetime"],
+        #                 'address' : image_meta["address"],
+        #                 'image_width' : img_upload["width"],
+        #                 'image_height' : img_upload["height"]})
         
         # 분석 끝난 이미지 삭제
-        os.remove(file)
+        os.remove(image_list[i])
 
-    result = {'code' : '201', 'message': '', 'result' : result_list}
-    return json.dumps(result)
+    result1 = {'code' : '201', 'message': '', 'result' : result}
+    return json.dumps(result1)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
