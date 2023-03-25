@@ -87,7 +87,6 @@ def image_classification(image_list,r):
 def upload_cloudnary_img(image):
     print("클라우디너리 서버에 이미지 업로드")
     response = cloudinary.uploader.upload(image)
-    print(jsonify(response))
     return response
 
 # mysql 쿼리에 이미지 정보 저장
@@ -145,8 +144,8 @@ def image_upload():
         
         # 메타데이터 추출
         image_meta = get_meta_info(image_list[i])
-        r[i] = image_meta["datetime"]
-        r[i] = image_meta["address"]
+        r['datetime'] = image_meta["datetime"]
+        r['address'] = image_meta["address"]
 
     # 이미지 카테고리 분류
     r = image_classification(image_list, r)
