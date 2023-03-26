@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 import tensorflow as tf
@@ -6,13 +7,14 @@ from keras.models import load_model
 import cv2 , os, glob
 import numpy as np
 
-from exif import Image
+from exif import Image as ExifImage
 from geopy.geocoders import Nominatim
+from PIL import Image
+from PIL.ExifTags import TAGS
 
 from DB import Database
 
 import json
-import DB
 
 # Set your Cloudinary credentials
 # ==============================
@@ -29,6 +31,8 @@ import cloudinary.api
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
 config = cloudinary.config(secure=True)
+
+CORS(app, resources=r'/api/*')
 
 # TODO : 카테고리 파일 db 연결하기
 file = open('category.text','r') 
@@ -98,7 +102,17 @@ def upload_cloudnary_img(image):
 # mysql 쿼리에 이미지 정보 저장
 def save_db(result):
     my_database_class = Database()
-    sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
+    if result['datetime'] == '' :
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height) \
+            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['address'],result['width'],result['height'])
+    elif result['address'] == '' :
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height) \
+            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['width'],result['height'])
+    elif result['address'] == '' and result['datetime'] == '':
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height) \
+            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['width'],result['height'])
+    else :
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
             VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['address'],result['width'],result['height'])
     
     print(sql)
@@ -111,23 +125,35 @@ def get_meta_info(file):
     #메타데이터 load
     with open(file,"rb") as f:
         image_byte = f.read()
-    image = Image(image_byte)
+    image = ExifImage(image_byte)
+
+    image_meta = dict()
+    image_meta['datetime'] = ""
+    image_meta['address'] = ""
 
     if image.has_exif:
         meta_list = image.list_all()
+        print(meta_list)
         if('datetime' in meta_list):
-            image_meta["datetime"] = image.datetime # 촬영일자
-        else :
-            image_meta["datetime"] = ""
+            image_meta['datetime'] = image.datetime # 촬영일자
         if('gps_latitude' in meta_list):
-            image_meta["address"] = image_gps(image) # 이미지 주소
-        else :
-            image_meta["address"] = ""
-        print(image_meta)
+            image_meta['address'] = image_gps(image) # 이미지 주소
+    else :
+        image2 = Image.open(file)
+        meta_img = image2._getexif()
+        print(meta_img)
+        
+        if meta_img != None:
+            for tag_id in meta_img:
+                tag = TAGS.get(tag_id, tag_id)
+                print(tag)
+                if tag == 'DateTime' or tag =='DateTimeOriginal':
+                    image_meta['datetime'] = meta_img.get(tag_id)
+        image2.close()    
     return image_meta
 
 # 파일 업로드 후 카테고리 json로 리턴
-@app.route('/image_upload',methods=['POST'])
+@app.route('/api/image_upload',methods=['POST'])
 def image_upload():
     # 파일 업로드 후 
     file_list = request.files.getlist("file_list")
@@ -156,10 +182,12 @@ def image_upload():
         # 배경화면 추천
         
         # 메타데이터 추출
+        print(image_list[i])
         image_meta = get_meta_info(image_list[i])
+        print(image_meta)
         r['datetime'] = image_meta["datetime"]
         r['address'] = image_meta["address"]
-
+        
     # 이미지 카테고리 분류
     r = image_classification(image_list, r)
 
