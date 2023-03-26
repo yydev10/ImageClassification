@@ -93,13 +93,14 @@ def upload_cloudnary_img(image):
 
 # mysql 쿼리에 이미지 정보 저장
 def save_db(result):
-    sql = "INSERT INTO \
-            capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')\
-            " % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['address'],result['width'],result['height'])
+    my_database_class = Database()
+    sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
+            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['address'],result['width'],result['height'])
     
-    Database().execute(sql)
-    Database().commit()
+    print(sql)
+
+    my_database_class.execute(sql)
+    my_database_class.commit()
 
 # 메타데이터 추출
 def get_meta_info(file):
