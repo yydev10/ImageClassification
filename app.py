@@ -88,8 +88,12 @@ def image_classification(image_list,r):
 # 클라우디너리 서버에 이미지 업로드
 def upload_cloudnary_img(image):
     print("클라우디너리 서버에 이미지 업로드")
-    response = cloudinary.uploader.upload(image)
-    return response
+    try:
+        response = cloudinary.uploader.upload(image)
+        return response
+    except:
+        response = "error"
+        return response
 
 # mysql 쿼리에 이미지 정보 저장
 def save_db(result):
@@ -141,12 +145,15 @@ def image_upload():
 
         #클라우디너리 서버에 이미지 업로드
         img_upload = upload_cloudnary_img(image_list[i])
-        r = result[i]
-        r['width'] = img_upload["width"]
-        r['height'] = img_upload["height"]
-        r['remote'] = img_upload["secure_url"]
+        if img_upload == "error":
+            result1 = {'code' : '401', 'message': 'error', 'result' : '서버에 이미지 업로드를 실패했습니다.'}
+        else:
+            r = result[i]
+            r['width'] = img_upload["width"]
+            r['height'] = img_upload["height"]
+            r['remote'] = img_upload["secure_url"]
 
-        # 배경화면 추천 기준 -> 
+        # 배경화면 추천
         
         # 메타데이터 추출
         image_meta = get_meta_info(image_list[i])
@@ -160,19 +167,11 @@ def image_upload():
         # db 저장
         print(result[i])
         save_db(result[i])
-        # result_list.append({'image':file.replace('img/',''),
-        #                 'remote' : img_upload["secure_url"],
-        #                 'prediction' :image_meta["prediction"],
-        #                 'probility':image_meta["probility"],
-        #                 'datetime': image_meta["datetime"],
-        #                 'address' : image_meta["address"],
-        #                 'image_width' : img_upload["width"],
-        #                 'image_height' : img_upload["height"]})
         
         # 분석 끝난 이미지 삭제
         os.remove(image_list[i])
 
-    result1 = {'code' : '201', 'message': '', 'result' : result}
+    result1 = {'code' : '201', 'message': '', 'result' : '이미지 등록 완료'}
     return json.dumps(result1)
 
 if __name__ == '__main__':
