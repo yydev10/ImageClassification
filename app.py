@@ -32,7 +32,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
 config = cloudinary.config(secure=True)
 
-CORS(app, resources=r'/api/*')
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # TODO : 카테고리 파일 db 연결하기
 file = open('category.text','r') 
