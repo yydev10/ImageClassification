@@ -32,7 +32,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
 config = cloudinary.config(secure=True)
 
-CORS(app, resources=r'/api/*')
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # TODO : 카테고리 파일 db 연결하기
 file = open('category.text','r') 
@@ -100,20 +100,20 @@ def upload_cloudnary_img(image):
         return response
 
 # mysql 쿼리에 이미지 정보 저장
-def save_db(result):
+def save_db(uuid,result):
     my_database_class = Database()
     if result['datetime'] == '' :
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['address'],result['width'],result['height'])
+            VALUES('%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['address'],result['width'],result['height'])
     elif result['address'] == '' :
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['width'],result['height'])
+            VALUES('%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['datetime'],result['width'],result['height'])
     elif result['address'] == '' and result['datetime'] == '':
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['width'],result['height'])
+            VALUES('%s','%s','%d','%d')" % (uuid,result['remote'],result['width'],result['height'])
     else :
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')" % ('sdfsfsgsdsd',result['remote'],result['datetime'],result['address'],result['width'],result['height'])
+            VALUES('%s','%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['datetime'],result['address'],result['width'],result['height'])
     
     print(sql)
 
@@ -156,6 +156,7 @@ def get_meta_info(file):
 @app.route('/api/image_upload',methods=['POST'])
 def image_upload():
     # 파일 업로드 후 
+    uuid = request.form['id'] 
     file_list = request.files.getlist("file_list")
     image_list = []
     result = []
@@ -194,7 +195,7 @@ def image_upload():
     for i in range(len(image_list)):
         # db 저장
         print(result[i])
-        save_db(result[i])
+        save_db(uuid,result[i])
         
         # 분석 끝난 이미지 삭제
         os.remove(image_list[i])
