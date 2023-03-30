@@ -156,7 +156,7 @@ def get_meta_info(file):
 @app.route('/api/image_upload',methods=['POST'])
 def image_upload():
     # 파일 업로드 후 
-    uuid = request.form['id'] 
+    uuid = request.form['uid'] 
     file_list = request.files.getlist("file_list")
     image_list = []
     result = []
