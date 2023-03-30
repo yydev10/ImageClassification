@@ -120,6 +120,16 @@ def save_db(uuid,result):
     my_database_class.execute(sql)
     my_database_class.commit()
 
+# 배경화면 비율(16:9) 계산
+def get_aspect_ratio(width,height):
+    cal = round((width * 9) / 16)
+    print(cal)
+
+    if cal == height+1 or cal == height-1:
+        return 'Y';
+    else:
+        return 'N';
+
 # 메타데이터 추출
 def get_meta_info(file):
     #메타데이터 load
@@ -181,7 +191,8 @@ def image_upload():
             r['remote'] = img_upload["secure_url"]
 
         # 배경화면 추천
-        
+        r['wallpaper'] = get_aspect_ratio(r['width'], r['height'])
+
         # 메타데이터 추출
         print(image_list[i])
         image_meta = get_meta_info(image_list[i])
@@ -204,4 +215,4 @@ def image_upload():
     return json.dumps(result1)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8082, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
