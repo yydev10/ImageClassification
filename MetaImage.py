@@ -9,7 +9,7 @@ class MetaImage():
     def __init__(self,img):
         self.img = img
     
-    def convert_gps_to_decimal(gps_coordinate):
+    def convert_gps_to_decimal(self,gps_coordinate):
         if gps_coordinate is None:
             return None
         degrees = gps_coordinate[0]
