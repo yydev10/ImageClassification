@@ -13,24 +13,13 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 
 from DB import Database
+from ColorExt import ColorExt
+from Upload import Upload
 
 import json
 
-# Set your Cloudinary credentials
-# ==============================
-from dotenv import load_dotenv
-load_dotenv()
-
-# Import the Cloudinary libraries
-# ==============================
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-
-# config
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'img/'
-config = cloudinary.config(secure=True)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -40,6 +29,7 @@ class_name = [f.strip('\n') for f in file.readlines()]
 file.close()
 
 image_meta = {}
+my_database_class = Database()
 
 def decimal_coords(coords, ref):
     decimal_degrees = coords[0] + coords[1] / 60 + coords[2] / 3600
@@ -88,37 +78,54 @@ def image_classification(image_list,r):
         r["probility"] = probility
 
     return r
-
-# 클라우디너리 서버에 이미지 업로드
-def upload_cloudnary_img(image):
-    print("클라우디너리 서버에 이미지 업로드")
-    try:
-        response = cloudinary.uploader.upload(image)
-        return response
-    except:
-        response = "error"
-        return response
-
 # mysql 쿼리에 이미지 정보 저장
 def save_db(uuid,result):
-    my_database_class = Database()
     if result['datetime'] == '' :
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height) \
-            VALUES('%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['address'],result['width'],result['height'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn) \
+            VALUES('%s','%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['address'],result['width'],result['height'],result['wallpaper'])
     elif result['address'] == '' :
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height) \
-            VALUES('%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['datetime'],result['width'],result['height'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height,wallpaper_yn) \
+            VALUES('%s','%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['datetime'],result['width'],result['height'],result['wallpaper'])
     elif result['address'] == '' and result['datetime'] == '':
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height) \
-            VALUES('%s','%s','%d','%d')" % (uuid,result['remote'],result['width'],result['height'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height,wallpaper_yn) \
+            VALUES('%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['width'],result['height'],result['wallpaper'])
     else :
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height) \
-            VALUES('%s','%s','%s','%s','%d','%d')" % (uuid,result['remote'],result['datetime'],result['address'],result['width'],result['height'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height,wallpaper_yn) \
+            VALUES('%s','%s','%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['datetime'],result['address'],result['width'],result['height'],result['wallpaper'])
     
     print(sql)
 
     my_database_class.execute(sql)
     my_database_class.commit()
+
+# db에 카테고리
+def save_category(image_id,result):
+    print(result)
+    category = "INSERT INTO capstonedb.ImageCategory(category_name,image_id) VALUES('%s','%d')" % (result,int(image_id))
+    
+    my_database_class.execute(category)
+    my_database_class.commit()
+        
+# db에 컬러 이미지 저장
+def save_color(image_id,result):
+    param_list = []
+    for p in result:
+        item = [image_id, p['r'],p['g'],p['b'],p['type']]
+        t = tuple(item)
+        param_list.append(t)
+
+    print(param_list)
+
+    sql = "INSERT INTO `capstonedb`.`Palette` VALUES(%s,%s,%s,%s,%s)"
+    my_database_class.executeMany(sql,param_list)
+    my_database_class.commit()
+
+# image_id 반환
+def get_image_id(image_url):
+    sql = "SELECT id FROM ImageInfo WHERE image_url='%s'" % (image_url)
+    print(sql)
+    image_id = my_database_class.executeOne(sql)
+    return image_id['id']
 
 # 배경화면 비율(16:9) 계산
 def get_aspect_ratio(width,height):
@@ -181,7 +188,7 @@ def image_upload():
         result.append({'image_name': image_list[i]})
 
         #클라우디너리 서버에 이미지 업로드
-        img_upload = upload_cloudnary_img(image_list[i])
+        img_upload = Upload(image_list[i]).upload_cloudinary()
         if img_upload == "error":
             result1 = {'code' : '401', 'message': 'error', 'result' : '서버에 이미지 업로드를 실패했습니다.'}
         else:
@@ -199,6 +206,10 @@ def image_upload():
         print(image_meta)
         r['datetime'] = image_meta["datetime"]
         r['address'] = image_meta["address"]
+
+        # 이미지 색상 추출
+        color_ext = ColorExt(image_list[i])
+        r['color']= color_ext.get_color(3)
         
     # 이미지 카테고리 분류
     r = image_classification(image_list, r)
@@ -207,7 +218,16 @@ def image_upload():
         # db 저장
         print(result[i])
         save_db(uuid,result[i])
-        
+
+        # image_url로 image_id 반환
+        image_id = get_image_id(result[i]['remote'])
+
+        # 색상 저장
+        save_color(image_id,result[i]['color'])
+
+        # 카테고리 저장
+        save_category(image_id,result[i]['prediction'])
+
         # 분석 끝난 이미지 삭제
         os.remove(image_list[i])
 

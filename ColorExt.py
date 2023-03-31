@@ -15,9 +15,9 @@ class ColorExt():
             else :
                 item['type'] = 'nomal'
             (r,g,b) = palette[i]
-            item['r'] = r
-            item['g'] = g
-            item['b'] = b
+            item['r'] = int(r)
+            item['g'] = int(g)
+            item['b'] = int(b)
             result.append(item)
         
         return result
