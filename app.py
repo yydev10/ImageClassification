@@ -7,14 +7,10 @@ from keras.models import load_model
 import cv2 , os, glob
 import numpy as np
 
-from exif import Image as ExifImage
-from geopy.geocoders import Nominatim
-from PIL import Image
-from PIL.ExifTags import TAGS
-
 from DB import Database
 from ColorExt import ColorExt
 from Upload import Upload
+from MetaImage import MetaImage
 
 import json
 
@@ -30,30 +26,6 @@ file.close()
 
 image_meta = {}
 my_database_class = Database()
-
-def decimal_coords(coords, ref):
-    decimal_degrees = coords[0] + coords[1] / 60 + coords[2] / 3600
-    if ref == 'S' or ref == 'W':
-        decimal_degrees = -decimal_degrees
-    return decimal_degrees
-
-# 이미지 위도 경도 -> 실제 주소로 변경
-def image_gps(image):
-    try:
-        image.gps_longitude
-        latitude = decimal_coords(image.gps_latitude,image.gps_latitude_ref)
-        longitude = decimal_coords(image.gps_longitude,image.gps_longitude_ref)
-
-        # 좌표 -> 주소 변환
-        if latitude != 0.0 or longitude != 0.0:
-            lat_lng_str  = "%f, %f" % (latitude,longitude)
-            geolocoder = Nominatim(user_agent = 'South Korea', timeout=None)
-            address = geolocoder.reverse(lat_lng_str)
-            return str(address)
-        else :
-            return ''
-    except AttributeError:
-        return 'error'
 
 # 이미지 전처리 함수
 def image_classification(image_list,r):
@@ -137,38 +109,6 @@ def get_aspect_ratio(width,height):
     else:
         return 'N';
 
-# 메타데이터 추출
-def get_meta_info(file):
-    #메타데이터 load
-    with open(file,"rb") as f:
-        image_byte = f.read()
-    image = ExifImage(image_byte)
-
-    image_meta = dict()
-    image_meta['datetime'] = ""
-    image_meta['address'] = ""
-
-    if image.has_exif:
-        meta_list = image.list_all()
-        print(meta_list)
-        if('datetime' in meta_list):
-            image_meta['datetime'] = image.datetime # 촬영일자
-        if('gps_latitude' in meta_list):
-            image_meta['address'] = image_gps(image) # 이미지 주소
-    else :
-        image2 = Image.open(file)
-        meta_img = image2._getexif()
-        print(meta_img)
-        
-        if meta_img != None:
-            for tag_id in meta_img:
-                tag = TAGS.get(tag_id, tag_id)
-                print(tag)
-                if tag == 'DateTime' or tag =='DateTimeOriginal':
-                    image_meta['datetime'] = meta_img.get(tag_id)
-        image2.close()    
-    return image_meta
-
 # 파일 업로드 후 카테고리 json로 리턴
 @app.route('/api/image_upload',methods=['POST'])
 def image_upload():
@@ -193,23 +133,24 @@ def image_upload():
             result1 = {'code' : '401', 'message': 'error', 'result' : '서버에 이미지 업로드를 실패했습니다.'}
         else:
             r = result[i]
-            r['width'] = img_upload["width"]
-            r['height'] = img_upload["height"]
             r['remote'] = img_upload["secure_url"]
-
-        # 배경화면 추천
-        r['wallpaper'] = get_aspect_ratio(r['width'], r['height'])
 
         # 메타데이터 추출
         print(image_list[i])
-        image_meta = get_meta_info(image_list[i])
+        image_meta = MetaImage(image_list[i]).get_meta_info() # get_meta_info(image_list[i])
         print(image_meta)
+        
+        r['width'] = image_meta["width"]
+        r['height'] = image_meta["height"]
         r['datetime'] = image_meta["datetime"]
         r['address'] = image_meta["address"]
 
         # 이미지 색상 추출
         color_ext = ColorExt(image_list[i])
         r['color']= color_ext.get_color(3)
+
+        # 배경화면 추천
+        r['wallpaper'] = get_aspect_ratio(r['width'], r['height'])
         
     # 이미지 카테고리 분류
     r = image_classification(image_list, r)
