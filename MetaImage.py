@@ -78,12 +78,7 @@ class MetaImage():
 
                     return image_meta
                 else:
-                    image_meta['datatime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    image_meta['datetime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     return image_meta
         except IOError:
             return None
-
-if __name__ == '__main__':
-    heic = "test/IMG_0349.HEIC"
-    meta = MetaImage(heic).convert_heic_to_jpg()
-    print(meta)

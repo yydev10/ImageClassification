@@ -52,13 +52,13 @@ def image_classification(image_list,r):
     return r
 # mysql 쿼리에 이미지 정보 저장
 def save_db(uuid,result):
-    if result['datetime'] == '' :
+    if "datetime" not in result :
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn) \
             VALUES('%s','%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['address'],result['width'],result['height'],result['wallpaper'])
-    elif result['address'] == '' :
+    elif "address" not in result :
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height,wallpaper_yn) \
             VALUES('%s','%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['datetime'],result['width'],result['height'],result['wallpaper'])
-    elif result['address'] == '' and result['datetime'] == '':
+    elif "address" not in result and "datetime" not in result:
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height,wallpaper_yn) \
             VALUES('%s','%s','%d','%d','%s')" % (uuid,result['remote'],result['width'],result['height'],result['wallpaper'])
     else :
@@ -143,7 +143,8 @@ def image_upload():
         r['width'] = image_meta["width"]
         r['height'] = image_meta["height"]
         r['datetime'] = image_meta["datetime"]
-        r['address'] = image_meta["address"]
+        if "address" in image_meta :
+            r['address'] = image_meta["address"]
 
         # 이미지 색상 추출
         color_ext = ColorExt(image_list[i])
@@ -176,4 +177,4 @@ def image_upload():
     return json.dumps(result1)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8082, debug=True)
