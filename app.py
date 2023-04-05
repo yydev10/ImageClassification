@@ -161,8 +161,6 @@ def image_upload():
 
     for i in range(len(image_list)):
         # db 저장
-        print(result[i])
-        print(image_class[i])
         save_db(uuid,result[i])
 
         # image_url로 image_id 반환
