@@ -24,5 +24,5 @@ class Upload():
             print(response)
             return response
         except:
-            response = "error"
+            response = "error image upload"
             return response

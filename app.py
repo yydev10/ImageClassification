@@ -9,7 +9,7 @@ import numpy as np
 
 from DB import Database
 from ColorExt import ColorExt
-from Upload import Upload
+from WorkProcess import WorkProcess
 from MetaImage import MetaImage
 
 import json
@@ -28,7 +28,7 @@ image_meta = {}
 my_database_class = Database()
 
 # 이미지 전처리 함수
-def image_classification(image_list,r):
+def image_classification(image_list):
     image = []
     image_predict = []
 
@@ -47,9 +47,9 @@ def image_classification(image_list,r):
     for i in range(len(pred)):
         prediction = str(class_name[np.argmax(pred[i])])
         probility = '{0:0.2f}'.format(100*max(pred[i]))
-        r['prediction'] = prediction
-        r["probility"] = probility
-        image_predict.append(r['prediction'])
+        # r['prediction'] = prediction
+        # r["probility"] = probility
+        image_predict.append(prediction)
 
     return image_predict
 
@@ -126,54 +126,58 @@ def image_upload():
         file.save(filename)
         image_list.append(filename)
 
-    for i in range(len(image_list)) :
-        # 이미지 이름 저장
-        result.append({'image_name': image_list[i]})
+    # 한번에 이미지 업로드 후 결과값 리턴
+    data = WorkProcess().multi_upload(image_list)
 
-        #클라우디너리 서버에 이미지 업로드
-        img_upload = Upload(image_list[i]).upload_cloudinary()
-        if img_upload == "error":
-            result1 = {'code' : '401', 'message': 'error', 'result' : '서버에 이미지 업로드를 실패했습니다.'}
-        else:
-            r = result[i]
-            r['remote'] = img_upload["secure_url"]
+    if "error image upload" in data :
+        return {'code' : '401', 'message': 'error', 'result' : '서버에 이미지 업로드를 실패했습니다.'}
+    
+    image_list = []
+    for i in range(len(data)) :
+        print(data[i])
+
+        data_dic = data[i]
+        print(data_dic.get('image_name'))
 
         # 메타데이터 추출
-        print(image_list[i])
-        image_meta = MetaImage(image_list[i]).get_meta_info() # get_meta_info(image_list[i])
+        image_meta = MetaImage(data_dic.get('image_name')).get_meta_info() # get_meta_info(image_list[i])
         print(image_meta)
         
-        r['width'] = image_meta["width"]
-        r['height'] = image_meta["height"]
-        r['datetime'] = image_meta["datetime"]
+        data_dic['width'] = image_meta["width"]
+        data_dic['height'] = image_meta["height"]
+        data_dic['datetime'] = image_meta["datetime"]
         if "address" in image_meta :
-            r['address'] = image_meta["address"]
+            data_dic['address'] = image_meta["address"]
 
         # 이미지 색상 추출
-        color_ext = ColorExt(image_list[i])
-        r['color']= color_ext.get_color(3)
+        color_ext = ColorExt(data_dic.get('image_name'))
+        data_dic['color']= color_ext.get_color(3)
 
         # 배경화면 추천
-        r['wallpaper'] = get_aspect_ratio(r['width'], r['height'])
+        data_dic['wallpaper'] = get_aspect_ratio(data_dic['width'], data_dic['height'])
+        
+        # 딕셔너리 추가
+        image_list.append(data_dic.get('image_name'))
+        result.append(data_dic)
         
     # 이미지 카테고리 분류
-    image_class = image_classification(image_list, r)
+    image_class = image_classification(image_list)
 
-    for i in range(len(image_list)):
+    for i in range(len(result)):
         # db 저장
         save_db(uuid,result[i])
 
         # image_url로 image_id 반환
-        image_id = get_image_id(result[i]['remote'])
+        image_id = get_image_id(result[i].get('remote'))
 
         # 색상 저장
-        save_color(image_id,result[i]['color'])
+        save_color(image_id,result[i].get('color'))
 
         # 카테고리 저장
         save_category(image_id,image_class[i])
 
         # 분석 끝난 이미지 삭제
-        os.remove(image_list[i])
+        os.remove(result[i].get('image_name'))
 
     result1 = {'code' : '201', 'message': '', 'result' : '이미지 등록 완료'}
     return json.dumps(result1)
