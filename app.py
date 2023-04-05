@@ -30,6 +30,7 @@ my_database_class = Database()
 # 이미지 전처리 함수
 def image_classification(image_list,r):
     image = []
+    image_predict = []
 
     for i in range(len(image_list)):
         img = cv2.imread(image_list[i],cv2.IMREAD_COLOR)
@@ -48,8 +49,10 @@ def image_classification(image_list,r):
         probility = '{0:0.2f}'.format(100*max(pred[i]))
         r['prediction'] = prediction
         r["probility"] = probility
+        image_predict.append(r['prediction'])
 
-    return r
+    return image_predict
+
 # mysql 쿼리에 이미지 정보 저장
 def save_db(uuid,result):
     if "datetime" not in result :
@@ -154,11 +157,12 @@ def image_upload():
         r['wallpaper'] = get_aspect_ratio(r['width'], r['height'])
         
     # 이미지 카테고리 분류
-    r = image_classification(image_list, r)
+    image_class = image_classification(image_list, r)
 
     for i in range(len(image_list)):
         # db 저장
         print(result[i])
+        print(image_class[i])
         save_db(uuid,result[i])
 
         # image_url로 image_id 반환
@@ -168,7 +172,7 @@ def image_upload():
         save_color(image_id,result[i]['color'])
 
         # 카테고리 저장
-        save_category(image_id,result[i]['prediction'])
+        save_category(image_id,image_class[i])
 
         # 분석 끝난 이미지 삭제
         os.remove(image_list[i])
