@@ -161,13 +161,14 @@ def image_upload():
         # get_meta_info(image_list[i])
         image_meta = MetaImage(data_dic.get('image_name')).get_meta_info()
         print(image_meta)
-
-        data_dic['width'] = image_meta["width"]
-        data_dic['height'] = image_meta["height"]
-        data_dic['datetime'] = image_meta["datetime"]
-        if "address" in image_meta:
-            data_dic['address'] = image_meta["address"]
-
+        
+        if image_meta is not None :
+            data_dic['width'] = image_meta["width"]
+            data_dic['height'] = image_meta["height"]
+            data_dic['datetime'] = image_meta["datetime"]
+            if "address" in image_meta :
+                data_dic['address'] = image_meta["address"]
+                
         # 이미지 색상 추출
         color_ext = ColorExt(data_dic.get('image_name'))
         data_dic['color'] = color_ext.get_color(3)
@@ -216,4 +217,4 @@ def image_remove():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8082, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
