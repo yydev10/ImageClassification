@@ -110,10 +110,12 @@ def get_image_id(image_url):
 
 # 배경화면 비율(16:9) 계산
 def get_aspect_ratio(width, height):
-    ratio = width / height
-    cal = abs(ratio - 1.77777778) < 0.00000001
+    minRatio = 1.6
+    maxRatio = 1.8
 
-    if cal:
+    ratio = round(width / height,3)
+
+    if ratio >= minRatio and ratio <=maxRatio :
         return 'Y'
     else:
         return 'N'
