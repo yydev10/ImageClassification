@@ -29,9 +29,10 @@ file.close()
 image_meta = {}
 my_database_class = Database()
 
+# 이미지 허용가능한 확장자
+img_ext = ['jpg','jpeg','JPG','png','bmp']
+
 # 이미지 전처리 함수
-
-
 def image_classification(image_list):
     image = []
     image_predict = []
@@ -58,8 +59,6 @@ def image_classification(image_list):
     return image_predict
 
 # mysql 쿼리에 이미지 정보 저장
-
-
 def save_db(uuid, result):
     if "datetime" not in result:
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn) \
@@ -80,8 +79,6 @@ def save_db(uuid, result):
     my_database_class.commit()
 
 # db에 카테고리
-
-
 def save_category(image_id, result):
     print(result)
     category = "INSERT INTO capstonedb.ImageCategory(category_name,image_id) VALUES('%s','%d')" % (
@@ -91,8 +88,6 @@ def save_category(image_id, result):
     my_database_class.commit()
 
 # db에 컬러 이미지 저장
-
-
 def save_color(image_id, result):
     param_list = []
     for p in result:
@@ -107,8 +102,6 @@ def save_color(image_id, result):
     my_database_class.commit()
 
 # image_id 반환
-
-
 def get_image_id(image_url):
     sql = "SELECT id FROM ImageInfo WHERE image_url='%s'" % (image_url)
     print(sql)
@@ -116,36 +109,45 @@ def get_image_id(image_url):
     return image_id['id']
 
 # 배경화면 비율(16:9) 계산
-
-
 def get_aspect_ratio(width, height):
-    cal = round((width * 9) / 16)
-    print(cal)
+    minRatio = 1.6
+    maxRatio = 1.8
 
-    if cal == height+1 or cal == height-1:
+    ratio = round(width / height,3)
+
+    if ratio >= minRatio and ratio <=maxRatio :
         return 'Y'
     else:
         return 'N'
 
 # 파일 업로드 후 카테고리 json로 리턴
-
-
 @app.route('/api/image_upload', methods=['POST'])
 def image_upload():
+    print('파일 업로드 start')
     # 파일 업로드 후
     uuid = request.form['uid']
     file_list = request.files.getlist("file_list")
+#    story_yn = request.form['story_yn'] # y : story에 올리는 이미지 , n : story에 올리지 않는 이미지 
+
     image_list = []
     result = []
 
+    print(file_list)
+
     for file in file_list:
+        ext = file.filename.split('.')[1]
+        if ext not in img_ext:
+            return {'code': '402', 'message': 'error', 'result': '지원하지 않는 이미지 확장자 입니다.\njpg, png, bmp 확장자만 지원합니다'}
+
         filename = os.path.join(
-            app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
+            app.config['UPLOAD_FOLDER'], file.filename)
+        print(filename)
         file.save(filename)
         image_list.append(filename)
 
     # 한번에 이미지 업로드 후 결과값 리턴
     data = WorkProcess().multi_upload(image_list)
+    print(data)
 
     if "error image upload" in data:
         return {'code': '401', 'message': 'error', 'result': '서버에 이미지 업로드를 실패했습니다.'}
@@ -158,7 +160,6 @@ def image_upload():
         print(data_dic.get('image_name'))
 
         # 메타데이터 추출
-        # get_meta_info(image_list[i])
         image_meta = MetaImage(data_dic.get('image_name')).get_meta_info()
         print(image_meta)
         
@@ -198,7 +199,11 @@ def image_upload():
         save_category(image_id, image_class[i])
 
         # 분석 끝난 이미지 삭제
-        os.remove(result[i].get('image_name'))
+        try:
+            os.remove(result[i].get('image_name'))
+        except:
+            result_msg = {'code': '403', 'message': '', 'result': '이미지 처리에 오류가 발생했습니다.'}
+            json.dumps(result_msg)
 
     result1 = {'code': '201', 'message': '', 'result': '이미지 등록 완료'}
     return json.dumps(result1)
@@ -217,4 +222,4 @@ def image_remove():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8082, debug=True)
