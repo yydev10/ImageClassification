@@ -22,7 +22,7 @@ app.config['UPLOAD_FOLDER'] = 'img/'
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # TODO : 카테고리 파일 db 연결하기
-file = open('category.text', 'r')
+file = open('category.text', 'r', encoding='UTF8')
 class_name = [f.strip('\n') for f in file.readlines()]
 file.close()
 
@@ -59,19 +59,19 @@ def image_classification(image_list):
     return image_predict
 
 # mysql 쿼리에 이미지 정보 저장
-def save_db(uuid, result):
+def save_db(uuid, result, story_yn):
     if "datetime" not in result:
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn) \
-            VALUES('%s','%s','%s','%d','%d','%s')" % (uuid, result['remote'], result['address'], result['width'], result['height'], result['wallpaper'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn,story_yn) \
+            VALUES('%s','%s','%s','%d','%d','%s','%c')" % (uuid, result['remote'], result['address'], result['width'], result['height'], result['wallpaper'], story_yn)
     elif "address" not in result:
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height,wallpaper_yn) \
-            VALUES('%s','%s','%s','%d','%d','%s')" % (uuid, result['remote'], result['datetime'], result['width'], result['height'], result['wallpaper'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_width,image_height,wallpaper_yn,story_yn) \
+            VALUES('%s','%s','%s','%d','%d','%s','%c')" % (uuid, result['remote'], result['datetime'], result['width'], result['height'], result['wallpaper'], story_yn)
     elif "address" not in result and "datetime" not in result:
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height,wallpaper_yn) \
-            VALUES('%s','%s','%d','%d','%s')" % (uuid, result['remote'], result['width'], result['height'], result['wallpaper'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_width,image_height,wallpaper_yn,story_yn) \
+            VALUES('%s','%s','%d','%d','%s','%c')" % (uuid, result['remote'], result['width'], result['height'], result['wallpaper'], story_yn)
     else:
-        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height,wallpaper_yn) \
-            VALUES('%s','%s','%s','%s','%d','%d','%s')" % (uuid, result['remote'], result['datetime'], result['address'], result['width'], result['height'], result['wallpaper'])
+        sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_date,image_location,image_width,image_height,wallpaper_yn,story_yn) \
+            VALUES('%s','%s','%s','%s','%d','%d','%s','%c')" % (uuid, result['remote'], result['datetime'], result['address'], result['width'], result['height'], result['wallpaper'], story_yn)
 
     print(sql)
 
@@ -127,7 +127,7 @@ def image_upload():
     # 파일 업로드 후
     uuid = request.form['uid']
     file_list = request.files.getlist("file_list")
-#    story_yn = request.form['story_yn'] # y : story에 올리는 이미지 , n : story에 올리지 않는 이미지 
+    story_yn = request.form['story_yn'] # Y : story에 올리는 이미지 , N : story에 올리지 않는 이미지 
 
     image_list = []
     result = []
@@ -177,7 +177,7 @@ def image_upload():
         # 배경화면 추천
         data_dic['wallpaper'] = get_aspect_ratio(
             data_dic['width'], data_dic['height'])
-
+        
         # 딕셔너리 추가
         image_list.append(data_dic.get('image_name'))
         result.append(data_dic)
@@ -187,7 +187,7 @@ def image_upload():
 
     for i in range(len(result)):
         # db 저장
-        save_db(uuid, result[i])
+        save_db(uuid, result[i], story_yn)
 
         # image_url로 image_id 반환
         image_id = get_image_id(result[i].get('remote'))
