@@ -13,19 +13,19 @@ import matplotlib.pyplot as plt
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
 
-bese_model = Xception(weights='imagenet', include_top=False, input_shape=(IMG_WIDTH,IMG_HEIGHT,3))
-#bese_model.summary()
+base_model = Xception(weights='imagenet', include_top=False, input_shape=(IMG_WIDTH,IMG_HEIGHT,3))
+#base_model.summary()
 
 model = Sequential()
 
-model.add(bese_model)
+model.add(base_model)
 #model.add(Flatten())
 model.add(GlobalAveragePooling2D())
 
 # 새로운 분류기
-model.add(Dense(16,activation='relu'))
+model.add(Dense(90,activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(2,activation='softmax')) # 답 2개이므로 출력층 노드 2개
+model.add(Dense(26,activation='softmax')) # 답 26개이므로 출력층 노드 26개
 
 #model.compile(loss='sparse_categorical_crossentropy',
 #            optimizer=tf.keras.optimizers.Adam(),
@@ -59,7 +59,7 @@ checkpoint = ModelCheckpoint(save_file_name,monitor='val_loss',
 
 earlystopping = EarlyStopping(monitor='val_loss',patience=5)
 
-hist = model.fit(train_data,epochs=30, validation_data = test_data, callbacks=[checkpoint,earlystopping])
+hist = model.fit(train_data,epochs=1, validation_data = test_data, callbacks=[checkpoint,earlystopping])
 
 ### 학습 끝
 
@@ -77,12 +77,13 @@ for i in range(len(test_image_name_list)):
 
 pred = model.predict(np.array(test_imge_list))
 
-class_name = ['cat','dog']
+class_name = ['강아지','고양이','꽃','나무','동물','디저트','물고기','바다','바코드','산','상의','식물','식사','신발','악세사리',
+              '영수증','음식','인물','인테리어','잎','차량','캡쳐화면','패션','풍경','하의','햄스터']
 
 plt.figure(figsize=(8,6))
 
 for i in range(len(pred)):
-    plt.subplot(4,4,i+1)
+    plt.subplot(4,7,i+1)
     prediction = str(class_name[np.argmax(pred[i])])
     probility = '{0:0.2f}'.format(100*max(pred[i]))
     title_str = prediction+" . "+probility+'%'
