@@ -4,6 +4,7 @@ from geopy.geocoders import Nominatim
 from geopy.point import Point
 import pillow_heif
 from datetime import datetime
+import math
 
 class MetaImage():
     def __init__(self,img):
@@ -21,15 +22,23 @@ class MetaImage():
     def convert_gps_to_address(self,gps_info):
         latitude = gps_info.get("GPSLatitude")
         longitude = gps_info.get("GPSLongitude")
+
         if latitude is None or longitude is None:
             return None
         else:
             lat_dec = self.convert_gps_to_decimal(latitude)
             lon_dec = self.convert_gps_to_decimal(longitude)
 
-            locator = Nominatim(user_agent = 'South Korea',timeout=None)
-            location = locator.reverse(Point(lat_dec, lon_dec))
-            return location.address
+            print("convert gps to address - dec")
+            print(lat_dec)
+            print(lon_dec)
+
+            if math.isnan(lat_dec) or math.isnan(lat_dec):
+                return None
+            else:
+                locator = Nominatim(user_agent = 'South Korea',timeout=None)
+                location = locator.reverse(Point(lat_dec, lon_dec))
+                return location.address
 
     # pillow 라이브러리로 메타 정보 얻기
     def get_meta_info(self):
