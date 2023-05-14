@@ -45,7 +45,7 @@ def image_classification(image_list):
         image.append(img)
 
     # 모델 load
-    model = load_model('cats_and_dogs_filtered_Xception_Colab.h5')
+    model = load_model('cats_and_dogs_filtered_Xception_Colab.h5', compile=False)
     pred = model.predict(np.array(image))
 
     # 예측 . 일치율% 형태로 출력
