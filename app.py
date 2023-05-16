@@ -30,9 +30,11 @@ image_meta = {}
 my_database_class = Database()
 
 # 이미지 허용가능한 확장자
-img_ext = ['jpg','jpeg','JPG','png','bmp']
+img_ext = ['jpg', 'jpeg', 'JPG', 'png', 'bmp']
 
 # 이미지 전처리 함수
+
+
 def image_classification(image_list):
     image = []
     image_predict = []
@@ -45,7 +47,8 @@ def image_classification(image_list):
         image.append(img)
 
     # 모델 load
-    model = load_model('cats_and_dogs_filtered_Xception_Colab.h5', compile=False)
+    model = load_model(
+        'cats_and_dogs_filtered_Xception_Colab.h5', compile=False)
     pred = model.predict(np.array(image))
 
     # 예측 . 일치율% 형태로 출력
@@ -59,6 +62,8 @@ def image_classification(image_list):
     return image_predict
 
 # mysql 쿼리에 이미지 정보 저장
+
+
 def save_db(uuid, result, story_yn):
     if "datetime" not in result:
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn,story_yn) \
@@ -79,6 +84,8 @@ def save_db(uuid, result, story_yn):
     my_database_class.commit()
 
 # db에 카테고리
+
+
 def save_category(image_id, result):
     print(result)
     category = "INSERT INTO capstonedb.ImageCategory(category_name,image_id) VALUES('%s','%d')" % (
@@ -88,6 +95,8 @@ def save_category(image_id, result):
     my_database_class.commit()
 
 # db에 컬러 이미지 저장
+
+
 def save_color(image_id, result):
     param_list = []
     for p in result:
@@ -102,32 +111,40 @@ def save_color(image_id, result):
     my_database_class.commit()
 
 # image_id 반환
+
+
 def get_image_id(image_url):
     sql = "SELECT id FROM ImageInfo WHERE image_url='%s'" % (image_url)
     print(sql)
     image_id = my_database_class.executeOne(sql)
     return image_id['id']
 
-# 배경화면 비율(16:9) 계산
-def get_aspect_ratio(width, height):
-    minRatio = 1.6
+# 배경화면 추천 로직
+
+
+def get_aspect_ratio(width, height, category_list):
+    category = category_list[0]
+    minRatio = 1.2
     maxRatio = 1.8
 
-    ratio = round(width / height,3)
+    ratio = round(width / height, 3)
 
-    if ratio >= minRatio and ratio <=maxRatio :
+    if ratio >= minRatio and ratio <= maxRatio and width >= 800 and (category == "바다" or category == "산" or category == "강아지" or category == "고양이"):
         return 'Y'
     else:
         return 'N'
 
 # 파일 업로드 후 카테고리 json로 리턴
+
+
 @app.route('/api/image_upload', methods=['POST'])
 def image_upload():
     print('파일 업로드 start')
     # 파일 업로드 후
     uuid = request.form['uid']
     file_list = request.files.getlist("file_list")
-    story_yn = request.form['story_yn'] # Y : story에 올리는 이미지 , N : story에 올리지 않는 이미지 
+    # Y : story에 올리는 이미지 , N : story에 올리지 않는 이미지
+    story_yn = request.form['story_yn']
 
     image_list = []
     result = []
@@ -157,27 +174,30 @@ def image_upload():
         print(data[i])
 
         data_dic = data[i]
+        image_name = []
         print(data_dic.get('image_name'))
 
         # 메타데이터 추출
         image_meta = MetaImage(data_dic.get('image_name')).get_meta_info()
         print(image_meta)
-        
-        if image_meta is not None :
+
+        if image_meta is not None:
             data_dic['width'] = image_meta["width"]
             data_dic['height'] = image_meta["height"]
             data_dic['datetime'] = image_meta["datetime"]
-            if "address" in image_meta :
+            if "address" in image_meta:
                 data_dic['address'] = image_meta["address"]
-                
+
         # 이미지 색상 추출
         color_ext = ColorExt(data_dic.get('image_name'))
         data_dic['color'] = color_ext.get_color(3)
 
         # 배경화면 추천
+        image_name.append(data_dic.get('image_name'))
+        category = image_classification(image_name)
         data_dic['wallpaper'] = get_aspect_ratio(
-            data_dic['width'], data_dic['height'])
-        
+            data_dic['width'], data_dic['height'], category)
+
         # 딕셔너리 추가
         image_list.append(data_dic.get('image_name'))
         result.append(data_dic)
@@ -186,6 +206,7 @@ def image_upload():
     image_class = image_classification(image_list)
 
     for i in range(len(result)):
+
         # db 저장
         save_db(uuid, result[i], story_yn)
 
@@ -202,7 +223,8 @@ def image_upload():
         try:
             os.remove(result[i].get('image_name'))
         except:
-            result_msg = {'code': '403', 'message': '', 'result': '이미지 처리에 오류가 발생했습니다.'}
+            result_msg = {'code': '403', 'message': '',
+                          'result': '이미지 처리에 오류가 발생했습니다.'}
             json.dumps(result_msg)
 
     result1 = {'code': '201', 'message': '', 'result': '이미지 등록 완료'}
