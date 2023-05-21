@@ -148,6 +148,7 @@ def image_upload():
 
     print(file_list)
 
+    
     for file in file_list:
         ext = file.filename.split('.')[1]
         if ext not in img_ext:
@@ -167,6 +168,7 @@ def image_upload():
         return {'code': '401', 'message': 'error', 'result': '서버에 이미지 업로드를 실패했습니다.'}
 
     image_list = []
+    image_class = []
     for i in range(len(data)):
         print(data[i])
 
@@ -199,8 +201,14 @@ def image_upload():
         image_list.append(data_dic.get('image_name'))
         result.append(data_dic)
 
+        # 일러스트 인 경우 모델학습 진행하지 않고 카테고리 무조건 '일러스트'로 insert
+        if gallery_yn != 'N':
+            image_class.append('일러스트')
+        
+
     # 이미지 카테고리 분류
-    image_class = image_classification(image_list)
+    if gallery_yn != 'Y':
+        image_class = image_classification(image_list)
 
     for i in range(len(result)):
 
