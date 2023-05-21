@@ -23,9 +23,9 @@ model.add(base_model)
 model.add(GlobalAveragePooling2D())
 
 # 새로운 분류기
-model.add(Dense(90,activation='relu'))
+model.add(Dense(60,activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(26,activation='softmax')) # 답 26개이므로 출력층 노드 26개
+model.add(Dense(12,activation='softmax')) # 답 12개이므로 출력층 노드 12개
 
 #model.compile(loss='sparse_categorical_crossentropy',
 #            optimizer=tf.keras.optimizers.Adam(),
@@ -77,8 +77,7 @@ for i in range(len(test_image_name_list)):
 
 pred = model.predict(np.array(test_imge_list))
 
-class_name = ['강아지','고양이','꽃','나무','동물','디저트','물고기','바다','바코드','산','상의','식물','식사','신발','악세사리',
-              '영수증','음식','인물','인테리어','잎','차량','캡쳐화면','패션','풍경','하의','햄스터']
+class_name = ['기프티콘','동물','식물','영수증','음식','인물','인테리어','일러스트','차량','캡쳐화면','패션','풍경']
 
 plt.figure(figsize=(8,6))
 
