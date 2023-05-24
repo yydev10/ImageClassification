@@ -82,8 +82,6 @@ def save_db(uuid, result, gallery_yn):
     my_database_class.commit()
 
 # db에 카테고리
-
-
 def save_category(image_id, result):
     print(result)
     category = "INSERT INTO capstonedb.ImageCategory(category_name,image_id) VALUES('%s','%d')" % (
@@ -93,8 +91,6 @@ def save_category(image_id, result):
     my_database_class.commit()
 
 # db에 컬러 이미지 저장
-
-
 def save_color(image_id, result):
     param_list = []
     for p in result:
@@ -109,8 +105,6 @@ def save_color(image_id, result):
     my_database_class.commit()
 
 # image_id 반환
-
-
 def get_image_id(image_url):
     sql = "SELECT id FROM ImageInfo WHERE image_url='%s'" % (image_url)
     print(sql)
@@ -168,7 +162,6 @@ def image_upload():
         return {'code': '401', 'message': 'error', 'result': '서버에 이미지 업로드를 실패했습니다.'}
 
     image_list = []
-    image_class = []
     for i in range(len(data)):
         print(data[i])
 
@@ -201,14 +194,8 @@ def image_upload():
         image_list.append(data_dic.get('image_name'))
         result.append(data_dic)
 
-        # 일러스트 인 경우 모델학습 진행하지 않고 카테고리 무조건 '일러스트'로 insert
-        if gallery_yn != 'N':
-            image_class.append('일러스트')
-        
-
     # 이미지 카테고리 분류
-    if gallery_yn != 'Y':
-        image_class = image_classification(image_list)
+    image_class = image_classification(image_list)
 
     for i in range(len(result)):
 
