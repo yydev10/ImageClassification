@@ -25,7 +25,7 @@ model.add(GlobalAveragePooling2D())
 # 새로운 분류기
 model.add(Dense(60,activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(12,activation='softmax')) # 답 12개이므로 출력층 노드 12개
+model.add(Dense(11,activation='softmax')) # 답 11개이므로 출력층 노드 11개
 
 #model.compile(loss='sparse_categorical_crossentropy',
 #            optimizer=tf.keras.optimizers.Adam(),
@@ -77,12 +77,12 @@ for i in range(len(test_image_name_list)):
 
 pred = model.predict(np.array(test_imge_list))
 
-class_name = ['기프티콘','동물','식물','영수증','음식','인물','인테리어','일러스트','차량','캡쳐화면','패션','풍경']
+class_name = ['기프티콘','동물','식물','영수증','음식','인물','인테리어','차량','캡쳐화면','패션','풍경']
 
 plt.figure(figsize=(8,6))
 
 for i in range(len(pred)):
-    plt.subplot(4,7,i+1)
+    plt.subplot(6,7,i+1)
     prediction = str(class_name[np.argmax(pred[i])])
     probility = '{0:0.2f}'.format(100*max(pred[i]))
     title_str = prediction+" . "+probility+'%'
