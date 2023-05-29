@@ -62,6 +62,8 @@ def image_classification(image_list):
     return image_predict
 
 # mysql 쿼리에 이미지 정보 저장
+
+
 def save_db(uuid, result, gallery_yn):
     if "datetime" not in result:
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn,gallery_yn) \
@@ -122,12 +124,12 @@ def get_image_id(image_url):
 
 def get_aspect_ratio(width, height, category_list):
     category = category_list[0]
-    minRatio = 1.2
-    maxRatio = 1.8
+    minRatio = 1.6
+    maxRatio = 1.9
 
     ratio = round(width / height, 3)
 
-    if ratio >= minRatio and ratio <= maxRatio and width >= 800 and (category == "바다" or category == "산" or category == "강아지" or category == "고양이"):
+    if ratio >= minRatio and ratio <= maxRatio and width >= 800 and (category == "동물" or category == "풍경"):
         return 'Y'
     else:
         return 'N'
@@ -141,14 +143,14 @@ def image_upload():
     # 파일 업로드 후
     uuid = request.form['uid']
     file_list = request.files.getlist("file_list")
-    gallery_yn = request.form['gallery_yn'] # Y : gallery에 올리는 이미지 , N : gallery에 올리지 않는 이미지 
+    # Y : gallery에 올리는 이미지 , N : gallery에 올리지 않는 이미지
+    gallery_yn = request.form['gallery_yn']
 
     image_list = []
     result = []
 
     print(file_list)
 
-    
     for file in file_list:
         ext = file.filename.split('.')[1]
         if ext not in img_ext:
@@ -204,7 +206,6 @@ def image_upload():
         # 일러스트 인 경우 모델학습 진행하지 않고 카테고리 무조건 '일러스트'로 insert
         if gallery_yn != 'N':
             image_class.append('일러스트')
-        
 
     # 이미지 카테고리 분류
     if gallery_yn != 'Y':
