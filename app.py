@@ -191,7 +191,7 @@ def image_upload():
 
         # 이미지 색상 추출
         color_ext = ColorExt(data_dic.get('image_name'))
-        data_dic['color'] = color_ext.get_color(3)
+        data_dic['color'] = color_ext.get_color(10)
 
         # 배경화면 추천
         image_name.append(data_dic.get('image_name'))
@@ -202,14 +202,10 @@ def image_upload():
         # 딕셔너리 추가
         image_list.append(data_dic.get('image_name'))
         result.append(data_dic)
-
-        # 일러스트 인 경우 모델학습 진행하지 않고 카테고리 무조건 '일러스트'로 insert
-        if gallery_yn != 'N':
-            image_class.append('일러스트')
-
-    # 이미지 카테고리 분류
-    if gallery_yn != 'Y':
+        
+        # 이미지 카테고리 분류
         image_class = image_classification(image_list)
+
 
     for i in range(len(result)):
 
