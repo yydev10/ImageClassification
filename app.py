@@ -33,8 +33,6 @@ my_database_class = Database()
 img_ext = ['jpg', 'jpeg', 'JPG', 'png', 'bmp']
 
 # 이미지 전처리 함수
-
-
 def image_classification(image_list):
     image = []
     image_predict = []
@@ -62,8 +60,6 @@ def image_classification(image_list):
     return image_predict
 
 # mysql 쿼리에 이미지 정보 저장
-
-
 def save_db(uuid, result, gallery_yn):
     if "datetime" not in result:
         sql = "INSERT INTO capstonedb.ImageInfo(uid,image_url,image_location,image_width,image_height,wallpaper_yn,gallery_yn) \
@@ -84,8 +80,6 @@ def save_db(uuid, result, gallery_yn):
     my_database_class.commit()
 
 # db에 카테고리
-
-
 def save_category(image_id, result):
     print(result)
     category = "INSERT INTO capstonedb.ImageCategory(category_name,image_id) VALUES('%s','%d')" % (
@@ -95,8 +89,6 @@ def save_category(image_id, result):
     my_database_class.commit()
 
 # db에 컬러 이미지 저장
-
-
 def save_color(image_id, result):
     param_list = []
     for p in result:
@@ -111,8 +103,6 @@ def save_color(image_id, result):
     my_database_class.commit()
 
 # image_id 반환
-
-
 def get_image_id(image_url):
     sql = "SELECT id FROM ImageInfo WHERE image_url='%s'" % (image_url)
     print(sql)
@@ -120,8 +110,6 @@ def get_image_id(image_url):
     return image_id['id']
 
 # 배경화면 추천 로직
-
-
 def get_aspect_ratio(width, height, category_list):
     category = category_list[0]
     minRatio = 1.6
@@ -135,8 +123,6 @@ def get_aspect_ratio(width, height, category_list):
         return 'N'
 
 # 파일 업로드 후 카테고리 json로 리턴
-
-
 @app.route('/api/image_upload', methods=['POST'])
 def image_upload():
     print('파일 업로드 start')
@@ -191,7 +177,7 @@ def image_upload():
 
         # 이미지 색상 추출
         color_ext = ColorExt(data_dic.get('image_name'))
-        data_dic['color'] = color_ext.get_color(10)
+        data_dic['color'] = color_ext.get_color(5)
 
         # 배경화면 추천
         image_name.append(data_dic.get('image_name'))
